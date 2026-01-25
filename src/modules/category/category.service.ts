@@ -6,17 +6,17 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 
 @Injectable()
 export class CategoryService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async create(createBookDto: CreateCategoryDto) {
-    const { name } = createBookDto;
+  async create(createCategoryDto: CreateCategoryDto) {
+    const { name } = createCategoryDto;
 
     return this.prisma.category.create({
       data: {
         name,
       },
       include: {
-        books: true,
+        products: true,
       },
     });
   }
@@ -24,7 +24,7 @@ export class CategoryService {
   async findAllCategories() {
     return this.prisma.category.findMany({
       include: {
-        books: true,
+        products: true,
       },
     });
   }
@@ -32,7 +32,7 @@ export class CategoryService {
     const category = await this.prisma.category.findUnique({
       where: { id },
       include: {
-        books: true,
+        products: true,
       },
     });
 

@@ -5,8 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/user/user.module';
-import { BookModule } from './modules/book/book.module';
-import { AuthorModule } from './modules/author/author.module';
+import { ProductModule } from './modules/product/product.module';
 import { CategoryModule } from './modules/category/category.module';
 import { OrderModule} from './modules/order/order.module';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -23,8 +22,7 @@ import { ProvincesModule } from './modules/province/provinces.module';
     DatabaseModule,
     AuthModule,
     UsersModule,
-    BookModule,
-    AuthorModule,
+    ProductModule,
     CategoryModule,
     WalletModule,
     OrderModule,

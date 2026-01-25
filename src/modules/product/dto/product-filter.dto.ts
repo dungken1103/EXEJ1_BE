@@ -1,8 +1,8 @@
 import { IsOptional, IsEnum, IsNumber, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
-import { BookStatus } from '@prisma/client';
+import { ProductStatus } from '@prisma/client';
 
-export class BookFilterDto {
+export class ProductFilterDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber({}, { message: 'page must be a number' })
@@ -15,13 +15,13 @@ export class BookFilterDto {
 
   @IsOptional()
   @IsString()
-  authorId?: string;
-
-  @IsOptional()
-  @IsString()
   categoryId?: string;
 
   @IsOptional()
-  @IsEnum(BookStatus, { message: 'status must be a valid BookStatus enum' })
-  status?: BookStatus;
+  @IsString()
+  woodTypeId?: string;
+
+  @IsOptional()
+  @IsEnum(ProductStatus, { message: 'status must be a valid ProductStatus enum' })
+  status?: ProductStatus;
 }

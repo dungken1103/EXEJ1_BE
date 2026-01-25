@@ -7,145 +7,144 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============== Auth & User ==============
+
 model User {
-  id                 String              @id @default(uuid())
-  email              String              @unique
-  passwordHash       String
-  name               String
-  role               Role                @default(USER)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  wallet             Float               @default(0)
-  cart               CartItem[]
-  orders             Order[]
-  reviews            Review[]
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String
+  name         String
+  phone        String?
+  role         Role       @default(USER)
+  wallet       Float      @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  cart         CartItem[]
+  orders       Order[]
+  reviews      Review[]
+  walletRecord Wallet?
 
   @@map("user")
 }
 
+model OtpVerification {
+  id        String   @id @default(uuid())
+  email     String
+  otp       String
+  createdAt DateTime
+  used      Boolean
 
-model CartItem {
-  id       String   @id @default(uuid())
-  userId   String
-  bookId   String
-  quantity Int      @default(1)
-  addedAt  DateTime @default(now())
-  book     Book     @relation(fields: [bookId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
+  @@map("otp_verification")
 }
 
-model Author {
-  id        String    @id @default(uuid())
-  name      String
-  bio       String?
-  createdAt DateTime? @default(now())
-  updatedAt DateTime? @updatedAt
-  books     Book[]    @relation("AuthorToBook")
+enum Role {
+  USER
+  ADMIN
+}
+
+// ============== Product (Waste To Worth: mô hình gỗ 3D) ==============
+
+model WoodType {
+  id          String    @id @default(uuid())
+  name        String    @unique // e.g. "Gỗ Hương", "Gỗ Gụ", "Gỗ Sồi"
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+
+  @@map("wood_type")
 }
 
 model Category {
   id        String    @id @default(uuid())
-  name      String    @unique
-  createdAt DateTime? @default(now())
-  updatedAt DateTime? @updatedAt
-  books     Book[]    @relation("BookToCategory")
+  name      String    @unique // e.g. "Bản đồ Việt Nam", "Bản đồ theo vùng"
+  slug      String?   @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+
+  @@map("category")
 }
 
-model Book {
-  id          String      @id @default(uuid())
-  title       String
-  description String?
-  image       String
-  price       Float
-  stock       Int         @default(0)
-  sold        Int         @default(0)
-  publishedAt DateTime?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  status      BookStatus  @default(AVAILABLE)
-  cartItems   CartItem[]
-  orderItems  OrderItem[]
-  reviews     Review[]
-  authors     Author[]    @relation("AuthorToBook")
-  categories  Category[]  @relation("BookToCategory")
+model Product {
+  id             String        @id @default(uuid())
+  name           String
+  slug           String?       @unique
+  description    String?
+  image          String
+  price          Float
+  stock          Int           @default(0)
+  sold           Int           @default(0)
+  status         ProductStatus @default(AVAILABLE)
+  difficulty     DifficultyLevel?
+  dimensions     String?       // e.g. "30x40 cm"
+  categoryId     String?
+  woodTypeId     String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  category       Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  woodType       WoodType?     @relation(fields: [woodTypeId], references: [id], onDelete: SetNull)
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+  reviews        Review[]
+
+  @@map("product")
 }
 
-model Review {
-  id        String   @id @default(uuid())
-  rating    Int
-  comment   String?
-  bookId    String
-  userId    String
-  createdAt DateTime @default(now())
-  book      Book     @relation(fields: [bookId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
-}
-
-model Order {
-  id        String      @id @default(uuid())
-  userId    String
-  userAddress   Json?  
-  total     Float
-  status    OrderStatus @default(PENDING)
-  payment   paymentMethod  
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  user      User        @relation(fields: [userId], references: [id])
-  items     OrderItem[]
-}
-
-model OrderItem {
-  id       String @id @default(uuid())
-  orderId  String
-  bookId   String
-  quantity Int
-  price    Float
-  book     Book   @relation(fields: [bookId], references: [id])
-  order    Order  @relation(fields: [orderId], references: [id])
-}
-
-
-model OtpVerification {
-  id       String @id @default(uuid())
-  email     String
-  otp   String
-  createdAt    DateTime
-  used     Boolean
-}
-
-model Wallet {
-  id       String @id @default(uuid())
-  userId     String  @unique
-  balance   Int
-  lastUpdated    DateTime  @default(now())
-}
-
-model WalletTransaction {
-  id       String @id @default(uuid())
-  walletId     String
-  amount   Int
-  createdAt    DateTime  @default(now())
-  status    String
-  transactionCode    String
-  confirmedAt    DateTime  @default(now())
-}
-
-enum TransactionType {
-  DEPOSIT
-  WITHDRAW
-}
-
-enum TransactionStatus {
-  PENDING
-  SUCCESS
-  FAILED
-}
-
-enum BookStatus {
+enum ProductStatus {
   AVAILABLE
   OUT_OF_STOCK
   DISCONTINUED
   DISABLE
+}
+
+enum DifficultyLevel {
+  EASY    // Dễ ghép
+  MEDIUM  // Trung bình
+  HARD    // Khó
+}
+
+// ============== Cart ==============
+
+model CartItem {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  quantity  Int      @default(1)
+  addedAt   DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("cart_item")
+}
+
+// ============== Order ==============
+
+model Order {
+  id          String        @id @default(uuid())
+  userId      String?       // null = đặt hàng khách (guest)
+  userAddress Json?
+  total       Float
+  status      OrderStatus   @default(PENDING)
+  payment     PaymentMethod
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  user        User?         @relation(fields: [userId], references: [id])
+  items       OrderItem[]
+
+  @@map("order")
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@map("order_item")
 }
 
 enum OrderStatus {
@@ -156,12 +155,48 @@ enum OrderStatus {
   CANCELLED
 }
 
-enum paymentMethod {
+enum PaymentMethod {
   Wallet
   COD
 }
 
-enum Role {
-  USER
-  ADMIN
+// ============== Review ==============
+
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int
+  comment   String?
+  productId String
+  userId    String
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("review")
+}
+
+// ============== Wallet (nạp tiền / thanh toán) ==============
+
+model Wallet {
+  id           String                @id @default(uuid())
+  userId       String                @unique
+  balance      Float                 @default(0)
+  lastUpdated  DateTime              @default(now())
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions WalletTransaction[]
+
+  @@map("wallet")
+}
+
+model WalletTransaction {
+  id              String   @id @default(uuid())
+  walletId        String
+  amount          Float
+  status          String
+  transactionCode String
+  createdAt       DateTime @default(now())
+  confirmedAt     DateTime @default(now())
+  wallet          Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@map("wallet_transaction")
 }

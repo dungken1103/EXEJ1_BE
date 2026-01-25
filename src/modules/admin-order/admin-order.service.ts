@@ -4,14 +4,14 @@ import { OrderStatus } from '@prisma/client';
 
 @Injectable()
 export class AdminOrderService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async getOrders(status?: string) {
     const query: any = {
       orderBy: { createdAt: 'desc' },
       include: {
         user: true,
-        items: { include: { book: true } },
+        items: { include: { product: true } },
       },
     };
 
@@ -24,8 +24,7 @@ export class AdminOrderService {
 
     const orders = await this.prisma.order.findMany(query);
 
-    // Nếu muốn parse JSON ra object rõ ràng (không cần nếu frontend xử lý được)
-    return orders.map(order => ({
+    return orders.map((order) => ({
       ...order,
       userAddress: order.userAddress as {
         fullName: string;
@@ -34,18 +33,17 @@ export class AdminOrderService {
         district: string;
         ward: string;
         addressDetail: string;
-      }
+      },
     }));
   }
 
   async approveOrder(orderId: string) {
     return this.prisma.$transaction(async (tx) => {
-      // Lấy order + items + book
       const order = await tx.order.findUnique({
         where: { id: orderId },
         include: {
           items: {
-            include: { book: true },
+            include: { product: true },
           },
         },
       });
@@ -55,22 +53,22 @@ export class AdminOrderService {
       }
 
       if (order.status !== OrderStatus.PENDING) {
-        throw new BadRequestException('Chỉ có thể duyệt đơn hàng ở trạng thái PENDING');
+        throw new BadRequestException(
+          'Chỉ có thể duyệt đơn hàng ở trạng thái PENDING',
+        );
       }
 
-      // Kiểm tra tồn kho trước khi duyệt
       for (const item of order.items) {
-        if (item.book.stock < item.quantity) {
+        if (item.product.stock < item.quantity) {
           throw new BadRequestException(
-            `Sách "${item.book.title}" không đủ tồn kho. Còn ${item.book.stock}, cần ${item.quantity}`
+            `Sản phẩm "${item.product.name}" không đủ tồn kho. Còn ${item.product.stock}, cần ${item.quantity}`,
           );
         }
       }
 
-      // Trừ stock và cộng sold
       for (const item of order.items) {
-        await tx.book.update({
-          where: { id: item.bookId },
+        await tx.product.update({
+          where: { id: item.productId },
           data: {
             stock: { decrement: item.quantity },
             sold: { increment: item.quantity },
@@ -78,44 +76,37 @@ export class AdminOrderService {
         });
       }
 
-      // Cập nhật trạng thái order sang APPROVED
       return tx.order.update({
         where: { id: orderId },
         data: { status: OrderStatus.CONFIRMED },
         include: {
           user: true,
-          items: { include: { book: true } },
+          items: { include: { product: true } },
         },
       });
     });
   }
 
   async assignOrder(orderId: string) {
-  // Tìm đơn hàng
-  const order = await this.prisma.order.findUnique({
-    where: { id: orderId },
-  });
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    });
 
-  if (!order) {
-    throw new NotFoundException('Không tìm thấy đơn hàng');
+    if (!order) {
+      throw new NotFoundException('Không tìm thấy đơn hàng');
+    }
+
+    if (order.status !== OrderStatus.CONFIRMED) {
+      throw new BadRequestException('Chỉ có thể giao đơn hàng đã được duyệt');
+    }
+
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: { status: OrderStatus.DELIVERED },
+      include: {
+        user: true,
+        items: { include: { product: true } },
+      },
+    });
   }
-
-  // Chỉ cho phép chuyển sang DELIVERED nếu đang APPROVED
-  if (order.status !== OrderStatus.CONFIRMED) {
-    throw new BadRequestException('Chỉ có thể giao đơn hàng đã được duyệt');
-  }
-
-  // Cập nhật trạng thái sang DELIVERED
-  return this.prisma.order.update({
-    where: { id: orderId },
-    data: { status: OrderStatus.DELIVERED },
-    include: {
-      user: true,
-      items: { include: { book: true } },
-    },
-  });
-}
-
-
-
 }

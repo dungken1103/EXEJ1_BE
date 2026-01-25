@@ -4,24 +4,22 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { PrismaClient, OrderStatus, paymentMethod } from '@prisma/client';
+import { OrderStatus, PaymentMethod } from '@prisma/client';
 import { Cron } from '@nestjs/schedule';
 import axios from 'axios';
+
 @Injectable()
 export class OrderService {
   constructor(private prisma: PrismaService) {}
-  // order.service.ts
+
   async getOrdersByStatusAndUser(status: string, userId: string) {
     const whereClause: any = {
       userId,
     };
 
-    // Nếu status tồn tại và hợp lệ, thì thêm vào điều kiện where
     if (status && Object.values(OrderStatus).includes(status as OrderStatus)) {
       whereClause.status = status as OrderStatus;
     }
-
-    console.log(whereClause);
 
     return this.prisma.order.findMany({
       where: whereClause,
@@ -31,7 +29,7 @@ export class OrderService {
       include: {
         items: {
           include: {
-            book: true,
+            product: true,
           },
         },
       },
@@ -56,17 +54,25 @@ export class OrderService {
   }
 
   async createOrder(
-    userId: string,
-    items: { bookId: string; quantity: number; price: number }[],
-    payment: paymentMethod,
+    userId: string | null | undefined,
+    items: { productId: string; quantity: number; price: number }[],
+    payment: PaymentMethod,
     userAddress: any,
   ) {
+    const isGuest = userId == null || userId === '';
+
+    if (isGuest && payment === PaymentMethod.Wallet) {
+      throw new BadRequestException(
+        'Khách đặt hàng không đăng nhập chỉ được chọn thanh toán khi nhận hàng (COD).',
+      );
+    }
+
     const total = items.reduce(
       (sum, item) => sum + item.price * item.quantity,
       0,
     );
 
-    if (payment === paymentMethod.Wallet) {
+    if (!isGuest && payment === PaymentMethod.Wallet) {
       const wallet = await this.prisma.wallet.findUnique({ where: { userId } });
       if (!wallet) throw new NotFoundException('Không tìm thấy ví');
       if (wallet.balance < total)
@@ -76,14 +82,14 @@ export class OrderService {
     return this.prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
         data: {
-          userId,
+          userId: isGuest ? null : userId,
           total,
           status: OrderStatus.PENDING,
           payment,
           userAddress,
           items: {
             create: items.map((item) => ({
-              bookId: item.bookId,
+              productId: item.productId,
               quantity: item.quantity,
               price: item.price,
             })),
@@ -92,7 +98,7 @@ export class OrderService {
         include: { items: true },
       });
 
-      if (payment === paymentMethod.Wallet) {
+      if (!isGuest && payment === PaymentMethod.Wallet) {
         await tx.wallet.update({
           where: { userId },
           data: {
@@ -103,8 +109,8 @@ export class OrderService {
       }
 
       for (const item of items) {
-        await tx.book.update({
-          where: { id: item.bookId },
+        await tx.product.update({
+          where: { id: item.productId },
           data: {
             stock: { decrement: item.quantity },
             sold: { increment: item.quantity },
@@ -130,15 +136,19 @@ export class OrderService {
       data: { status: 'CANCELLED' },
     });
 
+    if (order.userId == null) {
+      return { message: 'Order cancelled', walletBalance: null };
+    }
+
     const wallet = await this.prisma.wallet.findUnique({
       where: { userId: order.userId },
     });
 
     if (!wallet) {
-      throw new NotFoundException('Wallet not found');
+      return { walletBalance: null };
     }
 
-    if (order.payment === paymentMethod.Wallet) {
+    if (order.payment === PaymentMethod.Wallet) {
       await this.prisma.wallet.update({
         where: { id: wallet.id },
         data: {
