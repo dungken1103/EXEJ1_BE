@@ -1,10 +1,11 @@
-import { Controller, Get, Query, Post, Body, Put, Param } from '@nestjs/common';
+import { Controller, Get, Query, Post, Body, Put, Param, UseGuards, Request } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { PaymentMethod } from '@prisma/client';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('order')
 export class OrderController {
-  constructor(private readonly orderService: OrderService) {}
+  constructor(private readonly orderService: OrderService) { }
 
   @Get('get')
   async getOrdersByStatusAndUser(
@@ -24,21 +25,24 @@ export class OrderController {
     return this.orderService.cancelOrder(orderId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('create')
   async createOrder(
+    @Request() req,
     @Body()
     body: {
-      userId?: string | null;
       items: { productId: string; quantity: number; price: number }[];
       payment: PaymentMethod;
       userAddress: any;
     },
   ) {
+    const userId = req.user?.id || req.user?.userId;
     return this.orderService.createOrder(
-      body.userId ?? null,
+      userId,
       body.items,
       body.payment,
       body.userAddress,
     );
   }
 }
+

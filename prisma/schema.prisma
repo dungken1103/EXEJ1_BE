@@ -16,13 +16,11 @@ model User {
   name         String
   phone        String?
   role         Role       @default(USER)
-  wallet       Float      @default(0)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   cart         CartItem[]
   orders       Order[]
   reviews      Review[]
-  walletRecord Wallet?
 
   @@map("user")
 }
@@ -156,7 +154,6 @@ enum OrderStatus {
 }
 
 enum PaymentMethod {
-  Wallet
   COD
 }
 
@@ -175,28 +172,4 @@ model Review {
   @@map("review")
 }
 
-// ============== Wallet (nạp tiền / thanh toán) ==============
 
-model Wallet {
-  id           String                @id @default(uuid())
-  userId       String                @unique
-  balance      Float                 @default(0)
-  lastUpdated  DateTime              @default(now())
-  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions WalletTransaction[]
-
-  @@map("wallet")
-}
-
-model WalletTransaction {
-  id              String   @id @default(uuid())
-  walletId        String
-  amount          Float
-  status          String
-  transactionCode String
-  createdAt       DateTime @default(now())
-  confirmedAt     DateTime @default(now())
-  wallet          Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
-
-  @@map("wallet_transaction")
-}

@@ -7,9 +7,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/user/user.module';
 import { ProductModule } from './modules/product/product.module';
 import { CategoryModule } from './modules/category/category.module';
-import { OrderModule} from './modules/order/order.module';
+import { OrderModule } from './modules/order/order.module';
 import { ScheduleModule } from '@nestjs/schedule';
-import { WalletModule } from './modules/wallet/wallet.module';
 import { AdminOrderModule } from './modules/admin-order/admin-order.module';
 import { CartModule } from './modules/cart/cart.module';
 import { ProvincesModule } from './modules/province/provinces.module';
@@ -24,7 +23,6 @@ import { ProvincesModule } from './modules/province/provinces.module';
     UsersModule,
     ProductModule,
     CategoryModule,
-    WalletModule,
     OrderModule,
     AdminOrderModule,
     CartModule,

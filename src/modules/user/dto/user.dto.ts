@@ -19,6 +19,10 @@ export class CreateUserDto {
   password: string;
 
   @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
   @IsEnum(UserRole)
   role?: UserRole;
 }
@@ -31,6 +35,10 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   password?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
 
   @IsOptional()
   @IsEnum(UserRole)
