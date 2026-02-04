@@ -6,7 +6,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join, resolve } from 'path';
 
 async function bootstrap() {
-  const allowedOrigins = ['http://localhost:5173'];
+  const allowedOrigins = ['http://localhost:5173', 'https://wastetoworth.onrender.com/'];
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     cors: {
