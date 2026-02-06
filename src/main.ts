@@ -5,6 +5,8 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join, resolve } from 'path';
 
+import * as cookieParser from 'cookie-parser';
+
 async function bootstrap() {
   const allowedOrigins = ['http://localhost:5173', 'https://wastetoworth.onrender.com'];
 
@@ -14,6 +16,8 @@ async function bootstrap() {
       credentials: true,
     },
   });
+
+  app.use(cookieParser());
 
   app.useStaticAssets(resolve('uploads'), {
     prefix: '/uploads',
