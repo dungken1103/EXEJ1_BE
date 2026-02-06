@@ -11,8 +11,10 @@ export class OrderController {
   async getOrdersByStatusAndUser(
     @Query('status') status: string,
     @Query('userId') userId: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.orderService.getOrdersByStatusAndUser(status, userId);
+    const limitNumber = limit ? parseInt(limit, 10) : undefined;
+    return this.orderService.getOrdersByStatusAndUser(status, userId, limitNumber);
   }
 
   @Put('confirm-received/:orderId')

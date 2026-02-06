@@ -37,7 +37,10 @@ export class AuthService {
 
     // Return user without password hash
     const { passwordHash, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    return {
+      ...userWithoutPassword,
+      hasPassword: true
+    };
   }
 
   async validateUser(email: string, password: string) {
@@ -58,7 +61,13 @@ export class AuthService {
     const payload = { sub: user.id, email: user.email, role: user.role };
     return {
       access_token: this.jwtService.sign(payload),
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        hasPassword: true // Local login users always have password
+      },
     };
   }
 
@@ -84,7 +93,13 @@ export class AuthService {
       { expiresIn: '7d' },
     );
 
-    return { user, access_token };
+    return {
+      user: {
+        ...user,
+        hasPassword: user.passwordHash !== ''
+      },
+      access_token
+    };
   }
 
   async requestResetPassword(email: string) {
