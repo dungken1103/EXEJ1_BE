@@ -12,7 +12,7 @@ import axios from 'axios';
 export class OrderService {
   constructor(private prisma: PrismaService) { }
 
-  async getOrdersByStatusAndUser(status: string, userId: string) {
+  async getOrdersByStatusAndUser(status: string, userId: string, limit?: number) {
     const whereClause: any = {
       userId,
     };
@@ -23,6 +23,7 @@ export class OrderService {
 
     return this.prisma.order.findMany({
       where: whereClause,
+      take: limit, // Apply limit if provided
       orderBy: {
         createdAt: 'desc',
       },

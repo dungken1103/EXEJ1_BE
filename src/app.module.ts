@@ -12,6 +12,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AdminOrderModule } from './modules/admin-order/admin-order.module';
 import { CartModule } from './modules/cart/cart.module';
 import { ProvincesModule } from './modules/province/provinces.module';
+import { AdminDashboardModule } from './modules/admin-dashboard/admin-dashboard.module';
 
 @Module({
   imports: [ScheduleModule.forRoot(),
@@ -27,6 +28,7 @@ import { ProvincesModule } from './modules/province/provinces.module';
     AdminOrderModule,
     CartModule,
     ProvincesModule,
+    AdminDashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

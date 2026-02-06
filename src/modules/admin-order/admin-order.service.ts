@@ -4,7 +4,7 @@ import { OrderStatus } from '@prisma/client';
 
 @Injectable()
 export class AdminOrderService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async getOrders(status?: string) {
     const query: any = {
@@ -102,7 +102,7 @@ export class AdminOrderService {
 
     return this.prisma.order.update({
       where: { id: orderId },
-      data: { status: OrderStatus.DELIVERED },
+      data: { status: OrderStatus.SHIPPING },
       include: {
         user: true,
         items: { include: { product: true } },
