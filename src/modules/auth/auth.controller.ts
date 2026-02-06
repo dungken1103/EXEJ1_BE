@@ -41,7 +41,7 @@ export class AuthController {
     res.cookie('token', result.access_token, {
       httpOnly: true,
       secure: true,
-      sameSite: 'lax',
+      sameSite: 'none',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
     });
 
@@ -78,14 +78,15 @@ export class AuthController {
     res.cookie('token', result.access_token, {
       httpOnly: true,
       secure: true,
-      sameSite: 'lax',
+      sameSite: 'none',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
     });
     console.log("hihihii");
 
     // Redirect kèm thông tin user trong localStorage (tùy bạn xử lý ở FE)
     return res.redirect(
-      `http://localhost:5173/login-success?token=${encodeURIComponent(result.access_token)}&name=${encodeURIComponent(googleUser.name)}&email=${encodeURIComponent(googleUser.email)}`
+      // `http://localhost:5173/login-success?token=${encodeURIComponent(result.access_token)}&name=${encodeURIComponent(googleUser.name)}&email=${encodeURIComponent(googleUser.email)}`
+      `https://wastetoworth.onrender.com/login-success?token=${encodeURIComponent(result.access_token)}&name=${encodeURIComponent(googleUser.name)}&email=${encodeURIComponent(googleUser.email)}`
     )
   }
 
@@ -111,7 +112,7 @@ logout(@Res({ passthrough: true }) res: Response) {
     path: '/',
     httpOnly: true,
     secure: true,
-    sameSite: 'lax',
+    sameSite: 'none',
   });
   return { message: 'Logged out' };
 }
