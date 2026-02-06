@@ -13,6 +13,7 @@ import { AdminOrderModule } from './modules/admin-order/admin-order.module';
 import { CartModule } from './modules/cart/cart.module';
 import { ProvincesModule } from './modules/province/provinces.module';
 import { AdminDashboardModule } from './modules/admin-dashboard/admin-dashboard.module';
+import { WoodTypeModule } from './modules/wood-type/wood-type.module';
 
 @Module({
   imports: [ScheduleModule.forRoot(),
@@ -29,6 +30,7 @@ import { AdminDashboardModule } from './modules/admin-dashboard/admin-dashboard.
     CartModule,
     ProvincesModule,
     AdminDashboardModule,
+    WoodTypeModule,
   ],
   controllers: [AppController],
   providers: [AppService],
