@@ -40,8 +40,8 @@ export class AuthController {
 
     res.cookie('token', result.access_token, {
       httpOnly: true,
-      secure: false, // Để chạy được trên HTTP (mobile IP)
-      sameSite: 'lax', // Lax cho phép gửi cookie khi navigate từ link ngoài, và works với HTTP
+      secure: true, // Để chạy được trên HTTP (mobile IP)
+      sameSite: 'none', // Lax cho phép gửi cookie khi navigate từ link ngoài, và works với HTTP
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
     });
 
