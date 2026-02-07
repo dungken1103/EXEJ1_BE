@@ -1,9 +1,10 @@
 // mail.module.ts
 import { Module } from '@nestjs/common';
 import { MailService } from './mail.service';
+import { PrismaService } from '../../database/prisma.service';
 
 @Module({
-  providers: [MailService],
-  exports: [MailService], // <--- Quan trọng!
+  providers: [MailService, PrismaService],
+  exports: [MailService],
 })
-export class MailModule {}
+export class MailModule { }

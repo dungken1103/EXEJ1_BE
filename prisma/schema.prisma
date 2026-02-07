@@ -124,6 +124,7 @@ model Order {
   userAddress Json?
   total       Float
   status      OrderStatus   @default(PENDING)
+  cancelReason String?      // Lý do hủy đơn
   payment     PaymentMethod
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt

@@ -2,9 +2,11 @@ import { Module } from '@nestjs/common';
 import { AdminOrderController } from './admin-order.controller';
 import { AdminOrderService } from './admin-order.service';
 import { PrismaService } from '../../database/prisma.service';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
+  imports: [MailModule],
   controllers: [AdminOrderController],
   providers: [AdminOrderService, PrismaService],
 })
-export class AdminOrderModule {}
+export class AdminOrderModule { }

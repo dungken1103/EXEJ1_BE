@@ -23,8 +23,11 @@ export class OrderController {
   }
 
   @Put(':orderId/cancel')
-  async cancelOrder(@Param('orderId') orderId: string) {
-    return this.orderService.cancelOrder(orderId);
+  async cancelOrder(
+    @Param('orderId') orderId: string,
+    @Body('reason') reason: string,
+  ) {
+    return this.orderService.cancelOrder(orderId, reason);
   }
 
   @UseGuards(JwtAuthGuard)

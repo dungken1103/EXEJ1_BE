@@ -14,6 +14,7 @@ import { CartModule } from './modules/cart/cart.module';
 import { ProvincesModule } from './modules/province/provinces.module';
 import { AdminDashboardModule } from './modules/admin-dashboard/admin-dashboard.module';
 import { WoodTypeModule } from './modules/wood-type/wood-type.module';
+import { ContactModule } from './modules/contact/contact.module';
 
 @Module({
   imports: [ScheduleModule.forRoot(),
@@ -31,6 +32,7 @@ import { WoodTypeModule } from './modules/wood-type/wood-type.module';
     ProvincesModule,
     AdminDashboardModule,
     WoodTypeModule,
+    ContactModule,
   ],
   controllers: [AppController],
   providers: [AppService],

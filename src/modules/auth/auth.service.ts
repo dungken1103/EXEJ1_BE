@@ -65,6 +65,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         name: user.name,
+        phone: user.phone,
         role: user.role,
         hasPassword: true // Local login users always have password
       },
@@ -96,6 +97,7 @@ export class AuthService {
     return {
       user: {
         ...user,
+        phone: user.phone,
         hasPassword: user.passwordHash !== ''
       },
       access_token
