@@ -8,11 +8,27 @@ import { join, resolve } from 'path';
 import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
-  const allowedOrigins = ['http://localhost:5173', 'https://wastetoworth.onrender.com'];
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'https://wastetoworth.onrender.com',
+  ];
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     cors: {
-      origin: allowedOrigins,
+      origin: (requestOrigin, callback) => {
+        // Cho phép không có origin (như curl) hoặc nằm trong whitelist
+        if (!requestOrigin) return callback(null, true);
+
+        // Cho phép localhost, onrender, hoặc IP mạng nội bộ (192.168.x.x)
+        if (
+          allowedOrigins.includes(requestOrigin) ||
+          /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}:\d{1,5}$/.test(requestOrigin)
+        ) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
       credentials: true,
     },
   });

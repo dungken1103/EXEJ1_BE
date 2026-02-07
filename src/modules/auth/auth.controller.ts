@@ -40,8 +40,8 @@ export class AuthController {
 
     res.cookie('token', result.access_token, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none',
+      secure: false, // Để chạy được trên HTTP (mobile IP)
+      sameSite: 'lax', // Lax cho phép gửi cookie khi navigate từ link ngoài, và works với HTTP
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
     });
 
@@ -77,8 +77,8 @@ export class AuthController {
     console.log(result);
     res.cookie('token', result.access_token, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none',
+      secure: false,
+      sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
     });
     console.log("hihihii");
@@ -107,15 +107,15 @@ export class AuthController {
 
 
   @Post('logout')
-logout(@Res({ passthrough: true }) res: Response) {
-  res.clearCookie('token', {
-    path: '/',
-    httpOnly: true,
-    secure: true,
-    sameSite: 'none',
-  });
-  return { message: 'Logged out' };
-}
+  logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie('token', {
+      path: '/',
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+    });
+    return { message: 'Logged out' };
+  }
 
 
 }
