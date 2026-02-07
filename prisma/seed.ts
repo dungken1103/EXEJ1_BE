@@ -32,6 +32,17 @@ async function main() {
     },
   });
 
+  const admin2 = await prisma.user.upsert({
+    where: { email: 'wtwwastetoworth@gmail.com' },
+    update: {},
+    create: {
+      email: 'wtwwastetoworth@gmail.com',
+      passwordHash: adminPassword,
+      name: 'Admin Waste To Worth 2',
+      role: 'ADMIN',
+    },
+  });
+
   const user1 = await prisma.user.upsert({
     where: { email: 'user1@example.com' },
     update: {},
