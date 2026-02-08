@@ -11,11 +11,14 @@ export class MailService implements OnModuleInit {
   constructor(private readonly prisma: PrismaService) {
     this.transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
-      port: 465, // Using port 465 for secure SSL connection
-      secure: true, // true for 465, false for other ports
+      port: 587, // Using port 465 for secure SSL connection
+      secure: false, // true for 465, false for other ports
       auth: {
         user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_PASS,
+      },
+      tls: {
+        rejectUnauthorized: false,
       },
       // debug: true, // Uncomment for verbose debug output from nodemailer
       // logger: true 
