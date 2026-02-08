@@ -15,7 +15,9 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private mailService: MailService,
-  ) { } async register(registerDto: RegisterDto) {
+  ) { }
+
+  async register(registerDto: RegisterDto) {
     // Check if user with this email already exists
     const existingUser = await this.prisma.user.findUnique({
       where: { email: registerDto.email }
@@ -149,10 +151,9 @@ export class AuthService {
     return { message: 'Mã OTP đã được gửi tới email của bạn.' };
   }
 
-  async verifyResetOtp(dto: VerifyResetOtpDto): Promise<{ success: boolean; message?: string }> {
+  async verifyResetOtp(dto: VerifyResetOtpDto): Promise<{ success: boolean; message?: string; resetToken?: string }> {
     const { email, otp } = dto;
 
-    const otpNumber = parseInt(otp, 10);
     const existing = await this.prisma.otpVerification.findFirst({
       where: {
         email,
@@ -163,7 +164,7 @@ export class AuthService {
     });
 
     if (!existing) {
-      return { success: false, message: 'OTP không đúng hoặc đã hết hạn.' };
+      throw new BadRequestException('OTP không đúng hoặc đã hết hạn.');
     }
 
     // Đánh dấu là đã dùng
@@ -172,28 +173,34 @@ export class AuthService {
       data: { used: true },
     });
 
-    return { success: true };
+    // Generate Reset Token
+    const resetToken = await this.jwtService.signAsync(
+      { email, type: 'reset_password' },
+      { expiresIn: '5m' }
+    );
+
+    return { success: true, resetToken };
   }
 
   async resetPassword(dto: ResetPasswordDto) {
-    const { email, password } = dto;
+    const { resetToken, password } = dto;
+
+    let payload;
+    try {
+      payload = await this.jwtService.verifyAsync(resetToken);
+    } catch (error) {
+      throw new UnauthorizedException('Token đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.');
+    }
+
+    if (payload.type !== 'reset_password') {
+      throw new UnauthorizedException('Token không hợp lệ.');
+    }
+
+    const email = payload.email;
 
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) {
       throw new NotFoundException('Không tìm thấy tài khoản');
-    }
-
-    // Kiểm tra OTP đã xác thực hay chưa
-    const existingOtp = await this.prisma.otpVerification.findFirst({
-      where: {
-        email,
-        used: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (!existingOtp) {
-      throw new BadRequestException('Bạn cần xác thực OTP trước');
     }
 
     // Mã hóa mật khẩu mới
@@ -207,15 +214,11 @@ export class AuthService {
       },
     });
 
-    // Xóa OTP đã dùng
+    // Xóa OTP đã dùng (optional clean up)
     await this.prisma.otpVerification.deleteMany({
       where: { email },
     });
 
     return { message: 'Đặt lại mật khẩu thành công' };
   }
-
-
-
-
 }
