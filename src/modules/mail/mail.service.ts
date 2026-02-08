@@ -10,33 +10,31 @@ export class MailService implements OnModuleInit {
 
   constructor(private readonly prisma: PrismaService) {
     this.transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587, // Using port 465 for secure SSL connection
-      secure: false, // true for 465, false for other ports
+      host: process.env.MAIL_HOST || 'smtp-relay.brevo.com',
+      port: parseInt(process.env.MAIL_PORT || "587") || 587,
+      secure: false, // true for 465, false for other ports (Brevo usually uses 587 with STARTTLS)
       auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_PASS,
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
-      tls: {
-        rejectUnauthorized: false,
-      },
-      // debug: true, // Uncomment for verbose debug output from nodemailer
-      // logger: true 
     });
   }
 
   async onModuleInit() {
-    this.logger.log(`Initializing MailService...`);
-    this.logger.debug(`Env GMAIL_USER: ${process.env.GMAIL_USER ? 'Present' : 'MISSING'}`);
-    this.logger.debug(`Env GMAIL_PASS: ${process.env.GMAIL_PASS ? 'Present' : 'MISSING'}`);
+    this.logger.log(`Initializing MailService with Brevo...`);
+    this.logger.debug(`Env MAIL_HOST: ${process.env.MAIL_HOST}`);
+    this.logger.debug(`Env MAIL_PORT: ${process.env.MAIL_PORT}`);
+    this.logger.debug(`Env MAIL_USER: ${process.env.MAIL_USER ? 'Present' : 'MISSING'}`);
+    this.logger.debug(`Env MAIL_PASS: ${process.env.MAIL_PASS ? 'Present' : 'MISSING'}`);
+    this.logger.debug(`Env MAIL_FROM: ${process.env.MAIL_FROM}`);
 
     try {
       await this.transporter.verify();
-      this.logger.log('✅ Mail server is ready to take our messages (Connection Verified)');
+      this.logger.log('✅ Mail server (Brevo) is ready to take our messages (Connection Verified)');
     } catch (error) {
       this.logger.error('❌ Mail server configuration error', error);
       if (error.code === 'EAUTH') {
-        this.logger.error('Details: Authentication failed. Check GMAIL_USER/GMAIL_PASS or App Password.');
+        this.logger.error('Details: Authentication failed. Check MAIL_USER/MAIL_PASS.');
       } else if (error.code === 'ESOCKET') {
         this.logger.error('Details: Connection failed. Check network/port blocking.');
       }
@@ -109,7 +107,7 @@ export class MailService implements OnModuleInit {
       const html = this.getTemplateHtml('Đặt lại mật khẩu', content);
 
       await this.transporter.sendMail({
-        from: process.env.GMAIL_USER,
+        from: process.env.MAIL_FROM || process.env.MAIL_USER,
         to: email,
         subject: 'Mã xác thực đặt lại mật khẩu',
         html,
@@ -156,7 +154,7 @@ export class MailService implements OnModuleInit {
 
       // Send to all admins
       await this.transporter.sendMail({
-        from: process.env.GMAIL_USER,
+        from: process.env.MAIL_FROM || process.env.MAIL_USER,
         to: adminEmails, // Nodemailer supports array of strings
         subject: `[Đơn hàng mới] #${order.id} - ${this.formatPrice(order.total)}`,
         html,
@@ -221,7 +219,7 @@ export class MailService implements OnModuleInit {
       const html = this.getTemplateHtml('Cập nhật trạng thái đơn hàng', content);
 
       await this.transporter.sendMail({
-        from: process.env.GMAIL_USER,
+        from: process.env.MAIL_FROM || process.env.MAIL_USER,
         to,
         subject: `[Cập nhật đơn hàng] #${order.id}: ${statusText}`,
         html,
@@ -253,7 +251,7 @@ export class MailService implements OnModuleInit {
       const html = this.getTemplateHtml('Thông báo hủy đơn hàng', content);
 
       await this.transporter.sendMail({
-        from: process.env.GMAIL_USER,
+        from: process.env.MAIL_FROM || process.env.MAIL_USER,
         to: adminEmails,
         subject: `[Đơn hàng bị hủy] #${order.id}`,
         html,
@@ -291,7 +289,7 @@ export class MailService implements OnModuleInit {
       const html = this.getTemplateHtml('Liên hệ mới', content);
 
       await this.transporter.sendMail({
-        from: process.env.GMAIL_USER,
+        from: process.env.MAIL_FROM || process.env.MAIL_USER,
         to: adminEmails,
         subject: `[Liên hệ] Tin nhắn mới từ ${data.name}`,
         html,

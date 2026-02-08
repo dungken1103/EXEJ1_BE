@@ -116,7 +116,7 @@ export class OrderService {
     });
 
     // Send email to admin
-    const adminEmail = process.env.GMAIL_USER;
+    const adminEmail = process.env.MAIL_FROM || process.env.MAIL_USER;
     if (adminEmail) {
       this.mailService.sendOrderCreatedEmail(adminEmail, order).catch(err => console.error(err));
     }
@@ -163,7 +163,7 @@ export class OrderService {
     });
 
     // Send email to admin about cancellation
-    const adminEmail = process.env.GMAIL_USER;
+    const adminEmail = process.env.MAIL_FROM || process.env.MAIL_USER;
     if (adminEmail) {
       this.mailService.sendOrderCancelledEmail(adminEmail, order, reason).catch(err => console.error(err));
     }
