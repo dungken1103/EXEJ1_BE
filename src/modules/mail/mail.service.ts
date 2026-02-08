@@ -11,21 +11,32 @@ export class MailService implements OnModuleInit {
   constructor(private readonly prisma: PrismaService) {
     this.transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
-      port: 587,
-      secure: false, // true for 465, false for other ports
+      port: 465, // Using port 465 for secure SSL connection
+      secure: true, // true for 465, false for other ports
       auth: {
         user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_PASS,
       },
+      // debug: true, // Uncomment for verbose debug output from nodemailer
+      // logger: true 
     });
   }
 
   async onModuleInit() {
+    this.logger.log(`Initializing MailService...`);
+    this.logger.debug(`Env GMAIL_USER: ${process.env.GMAIL_USER ? 'Present' : 'MISSING'}`);
+    this.logger.debug(`Env GMAIL_PASS: ${process.env.GMAIL_PASS ? 'Present' : 'MISSING'}`);
+
     try {
       await this.transporter.verify();
-      this.logger.log('✅ Mail server is ready to take our messages');
+      this.logger.log('✅ Mail server is ready to take our messages (Connection Verified)');
     } catch (error) {
       this.logger.error('❌ Mail server configuration error', error);
+      if (error.code === 'EAUTH') {
+        this.logger.error('Details: Authentication failed. Check GMAIL_USER/GMAIL_PASS or App Password.');
+      } else if (error.code === 'ESOCKET') {
+        this.logger.error('Details: Connection failed. Check network/port blocking.');
+      }
     }
   }
 
