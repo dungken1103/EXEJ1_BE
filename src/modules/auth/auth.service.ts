@@ -144,7 +144,7 @@ export class AuthService {
       },
     });
 
-    await this.mailService.sendOtpEmail(email, otp);
+    this.mailService.sendOtpEmail(email, otp).catch(err => console.error("Error sending OTP email:", err));
 
     return { message: 'Mã OTP đã được gửi tới email của bạn.' };
   }

@@ -128,7 +128,7 @@ export class AdminOrderService {
 
     // Send email to user
     if (result.user?.email) {
-      this.mailService.sendOrderStatusUpdateEmail(result.user.email, result, 'CONFIRMED');
+      this.mailService.sendOrderStatusUpdateEmail(result.user.email, result, 'CONFIRMED').catch(err => console.error(err));
     }
 
     return result;
@@ -162,7 +162,7 @@ export class AdminOrderService {
 
     // Send email to user
     if (updatedOrder.user?.email) {
-      this.mailService.sendOrderStatusUpdateEmail(updatedOrder.user.email, updatedOrder, 'SHIPPING');
+      this.mailService.sendOrderStatusUpdateEmail(updatedOrder.user.email, updatedOrder, 'SHIPPING').catch(err => console.error(err));
     }
 
     return updatedOrder;
@@ -220,13 +220,13 @@ export class AdminOrderService {
 
     // Notify user
     if (order.user?.email) {
-      this.mailService.sendOrderStatusUpdateEmail(order.user.email, order, 'CANCELLED');
+      this.mailService.sendOrderStatusUpdateEmail(order.user.email, order, 'CANCELLED', reason).catch(err => console.error(err));
     }
 
     // Notify admins (including self/others)
     const adminEmail = process.env.GMAIL_USER;
     if (adminEmail) {
-      this.mailService.sendOrderCancelledEmail(adminEmail, order, reason);
+      this.mailService.sendOrderCancelledEmail(adminEmail, order, reason).catch(err => console.error(err));
     }
 
     return { message: 'Đã hủy đơn hàng thành công' };

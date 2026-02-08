@@ -64,7 +64,7 @@ export class OrderService {
 
     // Notify user
     if (order.user?.email) {
-      this.mailService.sendOrderStatusUpdateEmail(order.user.email, order, 'DELIVERED');
+      this.mailService.sendOrderStatusUpdateEmail(order.user.email, order, 'DELIVERED').catch(err => console.error(err));
     }
 
     return { status: updatedOrder.status };
@@ -118,7 +118,7 @@ export class OrderService {
     // Send email to admin
     const adminEmail = process.env.GMAIL_USER;
     if (adminEmail) {
-      this.mailService.sendOrderCreatedEmail(adminEmail, order);
+      this.mailService.sendOrderCreatedEmail(adminEmail, order).catch(err => console.error(err));
     }
 
     return order;
@@ -165,12 +165,12 @@ export class OrderService {
     // Send email to admin about cancellation
     const adminEmail = process.env.GMAIL_USER;
     if (adminEmail) {
-      this.mailService.sendOrderCancelledEmail(adminEmail, order, reason);
+      this.mailService.sendOrderCancelledEmail(adminEmail, order, reason).catch(err => console.error(err));
     }
 
     // Optionally notify user that they cancelled (or just rely on UI)
     if (order.user?.email) {
-      this.mailService.sendOrderStatusUpdateEmail(order.user.email, order, 'CANCELLED');
+      this.mailService.sendOrderStatusUpdateEmail(order.user.email, order, 'CANCELLED', reason).catch(err => console.error(err));
     }
 
     return { message: 'Order cancelled' };

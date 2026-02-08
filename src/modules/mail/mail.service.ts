@@ -102,7 +102,7 @@ export class MailService {
     `).join('');
 
     const content = `
-      <h2 style="color: #1F2937; margin-top: 0;">Đơn hàng mới #${order.id.slice(-6)}</h2>
+      <h2 style="color: #1F2937; margin-top: 0;">Đơn hàng mới #${order.id}</h2>
       <p>Có một đơn hàng mới vừa được tạo trên hệ thống.</p>
       
       <div style="background: #f3f4f6; border-radius: 8px; padding: 20px; margin: 24px 0;">
@@ -127,12 +127,12 @@ export class MailService {
     await this.transporter.sendMail({
       from: process.env.GMAIL_USER,
       to: adminEmails, // Nodemailer supports array of strings
-      subject: `[Đơn hàng mới] #${order.id.slice(-6)} - ${this.formatPrice(order.total)}`,
+      subject: `[Đơn hàng mới] #${order.id} - ${this.formatPrice(order.total)}`,
       html,
     });
   }
 
-  async sendOrderStatusUpdateEmail(to: string, order: any, status: string) {
+  async sendOrderStatusUpdateEmail(to: string, order: any, status: string, reason?: string) {
     let statusText = '';
     let message = '';
 
@@ -151,7 +151,7 @@ export class MailService {
         break;
       case 'CANCELLED':
         statusText = 'Đã hủy';
-        message = 'Đơn hàng của bạn đã bị hủy.';
+        message = `Đơn hàng của bạn đã bị hủy.${reason ? `<br><strong>Lý do:</strong> ${reason}` : ''}`;
         break;
       default:
         statusText = status;
@@ -166,7 +166,7 @@ export class MailService {
       `).join('');
 
     const content = `
-      <h2 style="color: #1F2937; margin-top: 0;">Cập nhật đơn hàng #${order.id.slice(-6)}</h2>
+      <h2 style="color: #1F2937; margin-top: 0;">Cập nhật đơn hàng #${order.id}</h2>
       <div style="text-align: center; margin: 24px 0;">
          <span style="display: inline-block; padding: 8px 16px; background: #FEF3C7; color: #92400E; border-radius: 20px; font-weight: 600;">${statusText}</span>
       </div>
@@ -187,7 +187,7 @@ export class MailService {
     await this.transporter.sendMail({
       from: process.env.GMAIL_USER,
       to,
-      subject: `[Cập nhật đơn hàng] #${order.id.slice(-6)}: ${statusText}`,
+      subject: `[Cập nhật đơn hàng] #${order.id}: ${statusText}`,
       html,
     });
   }
@@ -197,7 +197,7 @@ export class MailService {
     if (adminEmails.length === 0) return;
 
     const content = `
-       <h2 style="color: #DC2626; margin-top: 0;">Đơn hàng #${order.id.slice(-6)} đã bị hủy</h2>
+       <h2 style="color: #DC2626; margin-top: 0;">Đơn hàng #${order.id} đã bị hủy</h2>
        <p>Người dùng đã hủy đơn hàng này.</p>
        ${reason ? `<p><strong>Lý do:</strong> ${reason}</p>` : ''}
        
@@ -214,7 +214,7 @@ export class MailService {
     await this.transporter.sendMail({
       from: process.env.GMAIL_USER,
       to: adminEmails,
-      subject: `[Đơn hàng bị hủy] #${order.id.slice(-6)}`,
+      subject: `[Đơn hàng bị hủy] #${order.id}`,
       html,
     });
   }

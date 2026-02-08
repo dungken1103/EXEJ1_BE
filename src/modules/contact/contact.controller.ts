@@ -11,7 +11,7 @@ export class ContactController {
     @Post()
     @ApiOperation({ summary: 'Gửi tin nhắn liên hệ' })
     async sendContactMessage(@Body() body: { name: string; email: string; phone: string; content: string }) {
-        await this.mailService.sendContactEmail(body);
+        this.mailService.sendContactEmail(body).catch(err => console.error("Error sending contact email:", err));
         return { message: 'Gửi tin nhắn thành công' };
     }
 }
