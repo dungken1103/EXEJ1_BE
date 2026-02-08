@@ -1,21 +1,32 @@
-
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { PrismaService } from '../../database/prisma.service';
 import { Role } from '@prisma/client';
 
 @Injectable()
-export class MailService {
+export class MailService implements OnModuleInit {
   private transporter;
+  private readonly logger = new Logger(MailService.name);
 
   constructor(private readonly prisma: PrismaService) {
     this.transporter = nodemailer.createTransport({
-      service: 'Gmail',
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false, // true for 465, false for other ports
       auth: {
         user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_PASS,
       },
     });
+  }
+
+  async onModuleInit() {
+    try {
+      await this.transporter.verify();
+      this.logger.log('✅ Mail server is ready to take our messages');
+    } catch (error) {
+      this.logger.error('❌ Mail server configuration error', error);
+    }
   }
 
   private async getAdminEmails(): Promise<string[]> {
@@ -67,7 +78,8 @@ export class MailService {
   }
 
   async sendOtpEmail(email: string, otp: string) {
-    const content = `
+    try {
+      const content = `
       <h2 style="color: #1F2937; margin-top: 0;">Yêu cầu đặt lại mật khẩu</h2>
       <p>Xin chào,</p>
       <p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn. Để tiếp tục, vui lòng sử dụng mã xác thực (OTP) bên dưới:</p>
@@ -80,28 +92,33 @@ export class MailService {
       <p style="color: #6B7280; font-size: 14px; margin-top: 24px;">Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này. Tài khoản của bạn vẫn an toàn.</p>
     `;
 
-    const html = this.getTemplateHtml('Đặt lại mật khẩu', content);
+      const html = this.getTemplateHtml('Đặt lại mật khẩu', content);
 
-    await this.transporter.sendMail({
-      from: process.env.GMAIL_USER,
-      to: email,
-      subject: 'Mã xác thực đặt lại mật khẩu',
-      html,
-    });
+      await this.transporter.sendMail({
+        from: process.env.GMAIL_USER,
+        to: email,
+        subject: 'Mã xác thực đặt lại mật khẩu',
+        html,
+      });
+      this.logger.log(`OTP email sent to ${email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send OTP email to ${email}`, error);
+    }
   }
 
   async sendOrderCreatedEmail(to: string, order: any) {
-    const adminEmails = await this.getAdminEmails();
-    if (adminEmails.length === 0) return;
+    try {
+      const adminEmails = await this.getAdminEmails();
+      if (adminEmails.length === 0) return;
 
-    const itemsHtml = order.items.map(item => `
+      const itemsHtml = order.items.map(item => `
       <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
         <span>${item.product?.name || 'Sản phẩm'} (x${item.quantity}) </span>
         <span style="font-weight: 600;">${this.formatPrice(item.price * item.quantity)}</span>
       </div>
     `).join('');
 
-    const content = `
+      const content = `
       <h2 style="color: #1F2937; margin-top: 0;">Đơn hàng mới #${order.id}</h2>
       <p>Có một đơn hàng mới vừa được tạo trên hệ thống.</p>
       
@@ -121,51 +138,56 @@ export class MailService {
 
     `;
 
-    const html = this.getTemplateHtml('Thông báo đơn hàng mới', content);
+      const html = this.getTemplateHtml('Thông báo đơn hàng mới', content);
 
-    // Send to all admins
-    await this.transporter.sendMail({
-      from: process.env.GMAIL_USER,
-      to: adminEmails, // Nodemailer supports array of strings
-      subject: `[Đơn hàng mới] #${order.id} - ${this.formatPrice(order.total)}`,
-      html,
-    });
+      // Send to all admins
+      await this.transporter.sendMail({
+        from: process.env.GMAIL_USER,
+        to: adminEmails, // Nodemailer supports array of strings
+        subject: `[Đơn hàng mới] #${order.id} - ${this.formatPrice(order.total)}`,
+        html,
+      });
+      this.logger.log(`Order created email sent to admins for order #${order.id}`);
+    } catch (error) {
+      this.logger.error(`Failed to send order created email for order #${order.id}`, error);
+    }
   }
 
   async sendOrderStatusUpdateEmail(to: string, order: any, status: string, reason?: string) {
-    let statusText = '';
-    let message = '';
+    try {
+      let statusText = '';
+      let message = '';
 
-    switch (status) {
-      case 'CONFIRMED':
-        statusText = 'Đã xác nhận';
-        message = 'Đơn hàng của bạn đã được xác nhận và đang được chuẩn bị.';
-        break;
-      case 'SHIPPING':
-        statusText = 'Đang giao hàng';
-        message = 'Đơn hàng của bạn đã được bàn giao cho đơn vị vận chuyển.';
-        break;
-      case 'DELIVERED':
-        statusText = 'Đã giao hàng';
-        message = 'Đơn hàng đã được giao thành công. Cảm ơn bạn đã mua sắm tại Waste To Worth!';
-        break;
-      case 'CANCELLED':
-        statusText = 'Đã hủy';
-        message = `Đơn hàng của bạn đã bị hủy.${reason ? `<br><strong>Lý do:</strong> ${reason}` : ''}`;
-        break;
-      default:
-        statusText = status;
-        message = 'Trạng thái đơn hàng đã được cập nhật.';
-    }
+      switch (status) {
+        case 'CONFIRMED':
+          statusText = 'Đã xác nhận';
+          message = 'Đơn hàng của bạn đã được xác nhận và đang được chuẩn bị.';
+          break;
+        case 'SHIPPING':
+          statusText = 'Đang giao hàng';
+          message = 'Đơn hàng của bạn đã được bàn giao cho đơn vị vận chuyển.';
+          break;
+        case 'DELIVERED':
+          statusText = 'Đã giao hàng';
+          message = 'Đơn hàng đã được giao thành công. Cảm ơn bạn đã mua sắm tại Waste To Worth!';
+          break;
+        case 'CANCELLED':
+          statusText = 'Đã hủy';
+          message = `Đơn hàng của bạn đã bị hủy.${reason ? `<br><strong>Lý do:</strong> ${reason}` : ''}`;
+          break;
+        default:
+          statusText = status;
+          message = 'Trạng thái đơn hàng đã được cập nhật.';
+      }
 
-    const itemsHtml = order.items.map(item => `
+      const itemsHtml = order.items.map(item => `
         <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
           <span>${item.product?.name || 'Sản phẩm'} (x${item.quantity}) </span>
           <span style="font-weight: 600;">${this.formatPrice(item.price * item.quantity)}</span>
         </div>
       `).join('');
 
-    const content = `
+      const content = `
       <h2 style="color: #1F2937; margin-top: 0;">Cập nhật đơn hàng #${order.id}</h2>
       <div style="text-align: center; margin: 24px 0;">
          <span style="display: inline-block; padding: 8px 16px; background: #FEF3C7; color: #92400E; border-radius: 20px; font-weight: 600;">${statusText}</span>
@@ -182,21 +204,26 @@ export class MailService {
       </div>
     `;
 
-    const html = this.getTemplateHtml('Cập nhật trạng thái đơn hàng', content);
+      const html = this.getTemplateHtml('Cập nhật trạng thái đơn hàng', content);
 
-    await this.transporter.sendMail({
-      from: process.env.GMAIL_USER,
-      to,
-      subject: `[Cập nhật đơn hàng] #${order.id}: ${statusText}`,
-      html,
-    });
+      await this.transporter.sendMail({
+        from: process.env.GMAIL_USER,
+        to,
+        subject: `[Cập nhật đơn hàng] #${order.id}: ${statusText}`,
+        html,
+      });
+      this.logger.log(`Order status update email sent to ${to} for order #${order.id}`);
+    } catch (error) {
+      this.logger.error(`Failed to send order status update email for order #${order.id}`, error);
+    }
   }
 
   async sendOrderCancelledEmail(to: string, order: any, reason?: string) {
-    const adminEmails = await this.getAdminEmails();
-    if (adminEmails.length === 0) return;
+    try {
+      const adminEmails = await this.getAdminEmails();
+      if (adminEmails.length === 0) return;
 
-    const content = `
+      const content = `
        <h2 style="color: #DC2626; margin-top: 0;">Đơn hàng #${order.id} đã bị hủy</h2>
        <p>Người dùng đã hủy đơn hàng này.</p>
        ${reason ? `<p><strong>Lý do:</strong> ${reason}</p>` : ''}
@@ -209,21 +236,26 @@ export class MailService {
 
       `;
 
-    const html = this.getTemplateHtml('Thông báo hủy đơn hàng', content);
+      const html = this.getTemplateHtml('Thông báo hủy đơn hàng', content);
 
-    await this.transporter.sendMail({
-      from: process.env.GMAIL_USER,
-      to: adminEmails,
-      subject: `[Đơn hàng bị hủy] #${order.id}`,
-      html,
-    });
+      await this.transporter.sendMail({
+        from: process.env.GMAIL_USER,
+        to: adminEmails,
+        subject: `[Đơn hàng bị hủy] #${order.id}`,
+        html,
+      });
+      this.logger.log(`Order cancelled email sent to admins for order #${order.id}`);
+    } catch (error) {
+      this.logger.error(`Failed to send order cancelled email for order #${order.id}`, error);
+    }
   }
 
   async sendContactEmail(data: { name: string; email: string; phone: string; content: string }) {
-    const adminEmails = await this.getAdminEmails();
-    if (adminEmails.length === 0) return;
+    try {
+      const adminEmails = await this.getAdminEmails();
+      if (adminEmails.length === 0) return;
 
-    const content = `
+      const content = `
       <h2 style="color: #1F2937; margin-top: 0;">Liên hệ mới từ khách hàng</h2>
       <p>Bạn nhận được một tin nhắn liên hệ mới từ website.</p>
       
@@ -242,13 +274,17 @@ export class MailService {
       </div>
     `;
 
-    const html = this.getTemplateHtml('Liên hệ mới', content);
+      const html = this.getTemplateHtml('Liên hệ mới', content);
 
-    await this.transporter.sendMail({
-      from: process.env.GMAIL_USER,
-      to: adminEmails,
-      subject: `[Liên hệ] Tin nhắn mới từ ${data.name}`,
-      html,
-    });
+      await this.transporter.sendMail({
+        from: process.env.GMAIL_USER,
+        to: adminEmails,
+        subject: `[Liên hệ] Tin nhắn mới từ ${data.name}`,
+        html,
+      });
+      this.logger.log(`Contact email sent from ${data.email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send contact email from ${data.email}`, error);
+    }
   }
 }
