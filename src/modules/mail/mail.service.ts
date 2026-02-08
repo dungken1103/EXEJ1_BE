@@ -1,43 +1,53 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
+import { Injectable, Logger } from '@nestjs/common';
+import axios from 'axios';
 import { PrismaService } from '../../database/prisma.service';
 import { Role } from '@prisma/client';
 
 @Injectable()
-export class MailService implements OnModuleInit {
-  private transporter;
+export class MailService {
   private readonly logger = new Logger(MailService.name);
+  private readonly apiKey = process.env.BREVO_API_KEY;
+  private readonly senderEmail = process.env.MAIL_FROM || 'no-reply@wastetoworth.com';
+  private readonly senderName = 'Waste To Worth';
 
   constructor(private readonly prisma: PrismaService) {
-    this.transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST || 'smtp-relay.brevo.com',
-      port: parseInt(process.env.MAIL_PORT || "587") || 587,
-      secure: false, // true for 465, false for other ports (Brevo usually uses 587 with STARTTLS)
-      auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
-      },
-    });
+    if (!this.apiKey) {
+      this.logger.error('CRITICAL: BREVO_API_KEY is missing in environment variables!');
+    } else {
+        this.logger.log('MailService initialized with Brevo API.');
+    }
   }
 
-  async onModuleInit() {
-    this.logger.log(`Initializing MailService with Brevo...`);
-    this.logger.debug(`Env MAIL_HOST: ${process.env.MAIL_HOST}`);
-    this.logger.debug(`Env MAIL_PORT: ${process.env.MAIL_PORT}`);
-    this.logger.debug(`Env MAIL_USER: ${process.env.MAIL_USER ? 'Present' : 'MISSING'}`);
-    this.logger.debug(`Env MAIL_PASS: ${process.env.MAIL_PASS ? 'Present' : 'MISSING'}`);
-    this.logger.debug(`Env MAIL_FROM: ${process.env.MAIL_FROM}`);
+  private async sendMail(to: string | string[], subject: string, htmlContent: string) {
+    if (!this.apiKey) {
+      this.logger.error('Cannot send email: BREVO_API_KEY is not configured.');
+      return;
+    }
+
+    const recipients = Array.isArray(to) ? to.map(email => ({ email })) : [{ email: to }];
 
     try {
-      await this.transporter.verify();
-      this.logger.log('✅ Mail server (Brevo) is ready to take our messages (Connection Verified)');
+      const response = await axios.post(
+        'https://api.brevo.com/v3/smtp/email',
+        {
+          sender: { name: this.senderName, email: this.senderEmail },
+          to: recipients,
+          subject,
+          htmlContent,
+        },
+        {
+          headers: {
+            'accept': 'application/json',
+            'api-key': this.apiKey,
+            'content-type': 'application/json',
+          },
+        }
+      );
+      this.logger.log(`Email sent successfully: ${subject}`);
+      return response.data;
     } catch (error) {
-      this.logger.error('❌ Mail server configuration error', error);
-      if (error.code === 'EAUTH') {
-        this.logger.error('Details: Authentication failed. Check MAIL_USER/MAIL_PASS.');
-      } else if (error.code === 'ESOCKET') {
-        this.logger.error('Details: Connection failed. Check network/port blocking.');
-      }
+      this.logger.error(`Failed to send email: ${subject}`, error.response?.data || error.message);
+      throw error;
     }
   }
 
@@ -105,13 +115,7 @@ export class MailService implements OnModuleInit {
     `;
 
       const html = this.getTemplateHtml('Đặt lại mật khẩu', content);
-
-      await this.transporter.sendMail({
-        from: process.env.MAIL_FROM || process.env.MAIL_USER,
-        to: email,
-        subject: 'Mã xác thực đặt lại mật khẩu',
-        html,
-      });
+      await this.sendMail(email, 'Mã xác thực đặt lại mật khẩu', html);
       this.logger.log(`OTP email sent to ${email}`);
     } catch (error) {
       this.logger.error(`Failed to send OTP email to ${email}`, error);
@@ -151,14 +155,9 @@ export class MailService implements OnModuleInit {
     `;
 
       const html = this.getTemplateHtml('Thông báo đơn hàng mới', content);
-
-      // Send to all admins
-      await this.transporter.sendMail({
-        from: process.env.MAIL_FROM || process.env.MAIL_USER,
-        to: adminEmails, // Nodemailer supports array of strings
-        subject: `[Đơn hàng mới] #${order.id} - ${this.formatPrice(order.total)}`,
-        html,
-      });
+      
+      // Send to admins
+      await this.sendMail(adminEmails, `[Đơn hàng mới] #${order.id} - ${this.formatPrice(order.total)}`, html);
       this.logger.log(`Order created email sent to admins for order #${order.id}`);
     } catch (error) {
       this.logger.error(`Failed to send order created email for order #${order.id}`, error);
@@ -217,13 +216,7 @@ export class MailService implements OnModuleInit {
     `;
 
       const html = this.getTemplateHtml('Cập nhật trạng thái đơn hàng', content);
-
-      await this.transporter.sendMail({
-        from: process.env.MAIL_FROM || process.env.MAIL_USER,
-        to,
-        subject: `[Cập nhật đơn hàng] #${order.id}: ${statusText}`,
-        html,
-      });
+      await this.sendMail(to, `[Cập nhật đơn hàng] #${order.id}: ${statusText}`, html);
       this.logger.log(`Order status update email sent to ${to} for order #${order.id}`);
     } catch (error) {
       this.logger.error(`Failed to send order status update email for order #${order.id}`, error);
@@ -249,13 +242,7 @@ export class MailService implements OnModuleInit {
       `;
 
       const html = this.getTemplateHtml('Thông báo hủy đơn hàng', content);
-
-      await this.transporter.sendMail({
-        from: process.env.MAIL_FROM || process.env.MAIL_USER,
-        to: adminEmails,
-        subject: `[Đơn hàng bị hủy] #${order.id}`,
-        html,
-      });
+      await this.sendMail(adminEmails, `[Đơn hàng bị hủy] #${order.id}`, html);
       this.logger.log(`Order cancelled email sent to admins for order #${order.id}`);
     } catch (error) {
       this.logger.error(`Failed to send order cancelled email for order #${order.id}`, error);
@@ -287,13 +274,7 @@ export class MailService implements OnModuleInit {
     `;
 
       const html = this.getTemplateHtml('Liên hệ mới', content);
-
-      await this.transporter.sendMail({
-        from: process.env.MAIL_FROM || process.env.MAIL_USER,
-        to: adminEmails,
-        subject: `[Liên hệ] Tin nhắn mới từ ${data.name}`,
-        html,
-      });
+      await this.sendMail(adminEmails, `[Liên hệ] Tin nhắn mới từ ${data.name}`, html);
       this.logger.log(`Contact email sent from ${data.email}`);
     } catch (error) {
       this.logger.error(`Failed to send contact email from ${data.email}`, error);
