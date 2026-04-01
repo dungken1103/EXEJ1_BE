@@ -6,6 +6,7 @@ import {
   Param,
   Body,
   Query,
+  Delete,
   HttpCode,
   HttpStatus,
   UploadedFile,
@@ -13,8 +14,24 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'products',
+  } as any,
+});
 import {
   ApiTags,
   ApiOperation,
@@ -30,7 +47,7 @@ import { ProductFilterDto } from './dto/product-filter.dto';
 @ApiTags('Products')
 @Controller('products')
 export class ProductController {
-  constructor(private readonly productService: ProductService) {}
+  constructor(private readonly productService: ProductService) { }
 
   @Get('search')
   async searchProducts(
@@ -86,23 +103,12 @@ export class ProductController {
       },
     },
   })
-  @UseInterceptors(
-    FileInterceptor('image', {
-      storage: diskStorage({
-        destination: './uploads/products',
-        filename: (req, file, cb) => {
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
-          cb(null, uniqueSuffix + extname(file.originalname));
-        },
-      }),
-    }),
-  )
+  @UseInterceptors(FileInterceptor('image', { storage }))
   async uploadProductImage(
     @UploadedFile() file: Express.Multer.File,
     @Body() body: any,
   ) {
-    const imagePath = `/uploads/products/${file.filename}`;
+    const imagePath = file.path;
     return this.productService.createWithImage(body, imagePath);
   }
 
@@ -127,24 +133,13 @@ export class ProductController {
       },
     },
   })
-  @UseInterceptors(
-    FileInterceptor('image', {
-      storage: diskStorage({
-        destination: './uploads/products',
-        filename: (req, file, cb) => {
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
-          cb(null, uniqueSuffix + extname(file.originalname));
-        },
-      }),
-    }),
-  )
+  @UseInterceptors(FileInterceptor('image', { storage }))
   async updateProductWithImage(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
     @Body() body: any,
   ) {
-    const imagePath = file ? `/uploads/products/${file.filename}` : null;
+    const imagePath = file ? file.path : null;
     return this.productService.updateProductWithImage(id, body, imagePath);
   }
 
@@ -164,5 +159,12 @@ export class ProductController {
       throw new BadRequestException('Số lượng tồn kho không hợp lệ');
     }
     return this.productService.updateStock(id, stock);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Xóa vĩnh viễn sản phẩm' })
+  async deleteProduct(@Param('id') id: string) {
+    return this.productService.deleteProductById(id);
   }
 }

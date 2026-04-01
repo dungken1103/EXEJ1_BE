@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -183,5 +183,28 @@ export class ProductService {
       totalPages: Math.ceil(totalCount / limit),
       totalCount,
     };
+  }
+
+  async deleteProductById(productId: string) {
+    const existing = await this.prisma.product.findUnique({ where: { id: productId } });
+    if (!existing) {
+      throw new NotFoundException(`Product with ID ${productId} not found`);
+    }
+    // handle foreign key (one-many) and (many-one)
+    await this.prisma.product.update({
+      where: { id: productId },
+      data: { category: { disconnect: true }, woodType: { disconnect: true } },
+    });
+
+    // check order contain order item with that product
+    const orderItem = await this.prisma.orderItem.findMany({
+      where: { productId },
+    });
+    if (orderItem.length > 0) {
+      throw new BadRequestException('Product is in order');
+    }
+    return this.prisma.product.delete({
+      where: { id: productId },
+    });
   }
 }
